@@ -136,16 +136,18 @@ int main(int argc, char *argv[]) {
         int num_frames_since_last_sync = 0;
         KALDI_LOG << "TRAINING STARTED";
 
-        FrameDataReader reader(feature_rspecifier, targets_rspecifier, rnd_opts);
+        FrameDataReader reader(feature_rspecifier, targets_rspecifier, rnd_opts, randomize);
 
         const CuMatrixBase<BaseFloat> *nnet_in;
         CuMatrix<BaseFloat> nnet_out, obj_diff;
         const Posterior *nnet_tgt;
+        const Vector<BaseFloat> *flags;
 
 
         while (!reader.Done()) {
-            reader.ReadData(&nnet_in, &nnet_tgt); 
+            reader.ReadData(&nnet_in, &nnet_tgt, &flags); 
             // Forward pass
+            nnet.SetFlags(*flags);
             nnet.Propagate(*nnet_in, &nnet_out);
             // Eval loss
             loss->Eval(nnet_out, *nnet_tgt, &obj_diff);

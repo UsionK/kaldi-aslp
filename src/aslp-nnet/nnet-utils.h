@@ -202,6 +202,75 @@ void PosteriorToMatrixMapped(const Posterior &post, const TransitionModel &model
   (*mat) = m; 
 }
 
+/**
+ * Fill CuMatrix with random numbers (Gaussian distribution):
+ * mu = the mean value,
+ * sigma = standard deviation,
+ *
+ * Using the CPU random generator.
+ */
+template <typename Real>
+void RandGauss2(BaseFloat mu, BaseFloat sigma, CuMatrixBase<Real>* mat,
+               struct RandomState* state = NULL) {
+  // fill temporary matrix with 'Normal' samples,
+  Matrix<Real> m(mat->NumRows(), mat->NumCols(), kUndefined);
+  for (int32 r = 0; r < m.NumRows(); r++) {
+    for (int32 c = 0; c < m.NumCols(); c++) {
+      m(r, c) = RandGauss(state);
+    }
+  }
+  // re-shape the distrbution,
+  m.Scale(sigma);
+  m.Add(mu);
+  // export,
+  mat->CopyFromMat(m);
+}
+
+/**
+ * Fill CuMatrix with random numbers (Uniform distribution):
+ * mu = the mean value,
+ * range = the 'width' of the uniform PDF (spanning mu-range/2 .. mu+range/2)
+ *
+ * Using the CPU random generator.
+ */
+template <typename Real>
+void RandUniform2(BaseFloat mu, BaseFloat range, CuMatrixBase<Real>* mat,
+                 struct RandomState* state = NULL) {
+  // fill temporary matrix with '0..1' samples,
+  Matrix<Real> m(mat->NumRows(), mat->NumCols(), kUndefined);
+  for (int32 r = 0; r < m.NumRows(); r++) {
+    for (int32 c = 0; c < m.NumCols(); c++) {
+      m(r, c) = Rand(state) / static_cast<Real>(RAND_MAX);
+    }
+  }
+  // re-shape the distrbution,
+  m.Scale(range);  // 0..range,
+  m.Add(mu - (range / 2.0));  // mu-range/2 .. mu+range/2,
+  // export,
+  mat->CopyFromMat(m);
+}
+
+/**
+ * Fill CuVector with random numbers (Uniform distribution):
+ * mu = the mean value,
+ * range = the 'width' of the uniform PDF (spanning mu-range/2 .. mu+range/2)
+ *
+ * Using the CPU random generator.
+ */
+template <typename Real>
+void RandUniform2(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec,
+                 struct RandomState* state = NULL) {
+  // fill temporary vector with '0..1' samples,
+  Vector<Real> v(vec->Dim(), kUndefined);
+  for (int32 i = 0; i < v.Dim(); i++) {
+    v(i) = Rand(state) / static_cast<Real>(RAND_MAX);
+  }
+  // re-shape the distrbution,
+  v.Scale(range);  // 0..range,
+  v.Add(mu - (range / 2.0));  // mu-range/2 .. mu+range/2,
+  // export,
+  vec->CopyFromVec(v);
+}
 
 } // namespace aslp_nnet
 } // namespace kaldi

@@ -45,6 +45,7 @@ class LinearTransform : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     float param_stddev = 0.1;
+    int xavier_flag = 0;
     float learn_rate_coef = 1.0;
     std::string read_matrix_file;
     // parse config
@@ -54,6 +55,7 @@ class LinearTransform : public UpdatableComponent {
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
       else if (token == "<ReadMatrix>") ReadToken(is, false, &read_matrix_file);
+      else if (token == "<Xavier>") ReadBasicType(is, false, &xavier_flag);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|ReadMatrix|LearnRateCoef)";
       is >> std::ws; // eat-up whitespace
@@ -79,6 +81,12 @@ class LinearTransform : public UpdatableComponent {
     //
     learn_rate_coef_ = learn_rate_coef;
     //
+
+    if(xavier_flag){
+      float range = sqrt(6)/sqrt(OutputDim() + InputDim());
+      linearity_.Resize(OutputDim(), InputDim(), kSetZero);
+      RandUniform2(0.0, range, &linearity_); 
+    }
 
     // check dims,
     KALDI_ASSERT(linearity_.NumRows() == output_dim_);

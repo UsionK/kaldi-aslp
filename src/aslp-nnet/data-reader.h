@@ -25,12 +25,15 @@ class FrameDataReader {
 public:
     FrameDataReader(const std::vector<std::string> &feature_rspecifiers,
                     const std::vector<std::string> &targets_rspecifiers,
-                    const NnetDataRandomizerOptions &rand_opts);
+                    const NnetDataRandomizerOptions &rand_opts,
+                    bool randomize = true);
     FrameDataReader(const std::string &feature_rspecifier, 
                     const std::string &targets_rspecifier,
-                    const NnetDataRandomizerOptions &rand_opts);
+                    const NnetDataRandomizerOptions &rand_opts,
+                    bool randomize = true);
     ~FrameDataReader();
-    bool ReadData(const CuMatrixBase<BaseFloat> **feat, const Posterior **targets); 
+    bool ReadData(const CuMatrixBase<BaseFloat> **feat, const Posterior **targets,
+                  const Vector<BaseFloat> **flags = NULL); 
     void ReadData(std::vector<const CuMatrixBase<BaseFloat > *> *input, 
                   std::vector<const Posterior *> *output); 
     bool Done();
@@ -41,9 +44,12 @@ private:
     RandomizerMask randomizer_mask_;
     std::vector<MatrixRandomizer *> feature_randomizers_;
     std::vector<PosteriorRandomizer *> targets_randomizers_;
+    std::vector<VectorRandomizer *> flags_randomizers_;
     int num_input_, num_output_;
     const NnetDataRandomizerOptions &rand_opts_;
     bool read_done_;
+    int num_done_;
+    bool randomize_;
 };
 
 struct SequenceDataReaderOptions {

@@ -100,16 +100,18 @@ int main(int argc, char *argv[]) {
         kaldi::int64 total_frames = 0, report_frames = 0;
         KALDI_LOG << (crossvalidate?"CROSS-VALIDATION":"TRAINING") << " STARTED";
 
-        FrameDataReader reader(feature_rspecifier, targets_rspecifier, rnd_opts);
+        FrameDataReader reader(feature_rspecifier, targets_rspecifier, rnd_opts, randomize);
 
         const CuMatrixBase<BaseFloat> *nnet_in;
         CuMatrix<BaseFloat> nnet_out, obj_diff;
         const Posterior *nnet_tgt;
+        const Vector<BaseFloat> *flags;
 
         while (!reader.Done()) {
-            bool ok = reader.ReadData(&nnet_in, &nnet_tgt); 
+            bool ok = reader.ReadData(&nnet_in, &nnet_tgt, &flags); 
             if (!ok) continue;
             // Forward pass
+            nnet.SetFlags(*flags);
             if (!crossvalidate) {
                 nnet.Propagate(*nnet_in, &nnet_out);
             } else {

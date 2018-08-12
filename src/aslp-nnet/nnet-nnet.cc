@@ -957,5 +957,26 @@ void Nnet::SortComponent(std::vector<Component*> &comp) {
 	comp.swap(tmp_comp);
 }
 
+void Nnet::SetFlags(const Vector<BaseFloat> &flags) {    
+  for (int32 c = 0; c < NumComponents(); c++) {
+    // if (GetComponent(c).GetType() == Component::kFsmn) {
+    //   Fsmn& comp = dynamic_cast<Fsmn&>(GetComponent(c));
+    //   comp.SetFlags(flags);
+    // }
+    if (GetComponent(c).GetType() == Component::kDeepFsmn) {
+      DeepFsmn& comp = dynamic_cast<DeepFsmn&>(GetComponent(c));
+      comp.SetFlags(flags);
+    }
+    // if (GetComponent(c).GetType() == Component::kUniFsmn) {
+    //   UniFsmn& comp = dynamic_cast<UniFsmn&>(GetComponent(c));
+    //   comp.SetFlags(flags);
+    // }
+    // if (GetComponent(c).GetType() == Component::kUniDeepFsmn) {
+    //   UniDeepFsmn& comp = dynamic_cast<UniDeepFsmn&>(GetComponent(c));
+    //   comp.SetFlags(flags);
+    // }
+  }
+}
+
 } // namespace aslp_nnet
 } // namespace kaldi

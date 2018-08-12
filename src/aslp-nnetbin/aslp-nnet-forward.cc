@@ -167,6 +167,12 @@ int main(int argc, char *argv[]) {
         }
         frame_num_utt.push_back(skip_feat.NumRows());
         nnet.SetSeqLengths(frame_num_utt);
+
+        Vector<BaseFloat> flags;
+        flags.Resize(skip_feat.NumRows(), kSetZero);
+        flags.Set(1.0);
+        nnet.SetFlags(flags);
+
         nnet.Feedforward(skip_feat, &skip_out);
         nnet_out.Resize(feats_transf.NumRows(), skip_out.NumCols());
         for (int i = 0; i < skip_len; i++) {
@@ -180,6 +186,12 @@ int main(int argc, char *argv[]) {
       } else {
         frame_num_utt.push_back(feats_transf.NumRows());
         nnet.SetSeqLengths(frame_num_utt);
+
+        Vector<BaseFloat> flags;
+        flags.Resize(feats_transf.NumRows(), kSetZero);
+        flags.Set(1.0);
+        nnet.SetFlags(flags);
+
         // fwd-pass, nnet,
         nnet.Feedforward(feats_transf, &nnet_out);
       }

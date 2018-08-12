@@ -12,15 +12,19 @@ namespace aslp_nnet {
 FrameDataReader::FrameDataReader(
                     const std::vector<std::string> &feature_rspecifiers,
                     const std::vector<std::string> &targets_rspecifiers,
-                    const NnetDataRandomizerOptions &rand_opts): 
+                    const NnetDataRandomizerOptions &rand_opts,
+                    bool randomize): 
         num_input_(feature_rspecifiers.size()), 
         num_output_(targets_rspecifiers.size()),
-        rand_opts_(rand_opts), read_done_(false) {
+        rand_opts_(rand_opts), read_done_(false),
+        num_done_(0), randomize_(randomize) {
     feature_readers_.resize(num_input_);
     feature_randomizers_.resize(num_input_);
+    flags_randomizers_.resize(num_input_);
     for (int i = 0; i < num_input_; i++) {
         feature_readers_[i] = new SequentialBaseFloatMatrixReader(feature_rspecifiers[i]);
         feature_randomizers_[i] = new MatrixRandomizer(rand_opts_);
+        flags_randomizers_[i] = new VectorRandomizer(rand_opts_);
     }
     targets_readers_.resize(num_output_);
     targets_randomizers_.resize(num_output_);
@@ -33,7 +37,8 @@ FrameDataReader::FrameDataReader(
 
 FrameDataReader::FrameDataReader(const std::string &feature_rspecifier, 
                                  const std::string &targets_rspecifier,
-                                 const NnetDataRandomizerOptions &rand_opts): rand_opts_(rand_opts) {
+                                 const NnetDataRandomizerOptions &rand_opts,
+                                 bool randomize): rand_opts_(rand_opts), randomize_(randomize) {
     std::vector<std::string> feature_rspecifiers;
     feature_rspecifiers.push_back(feature_rspecifier);
     std::vector<std::string> targets_rspecifiers;
@@ -47,6 +52,9 @@ FrameDataReader::~FrameDataReader() {
     }
     for (int i = 0; i < feature_randomizers_.size(); i++) {
         delete feature_randomizers_[i];
+    }
+    for (int i = 0; i < flags_randomizers_.size(); i++) {
+        delete flags_randomizers_[i];
     }
     for (int i = 0; i < targets_readers_.size(); i++) {
         delete targets_readers_[i];
@@ -100,6 +108,12 @@ void FrameDataReader::FillRandomizer() {
                     KALDI_ERR << "all feature dim not equal";
                 }
                 feature_randomizers_[i]->AddData(CuMatrix<BaseFloat>(mat));
+
+                Vector<BaseFloat> tmp_flags;
+                tmp_flags.Resize(mat.NumRows(), kSetZero);
+                tmp_flags.Set(BaseFloat(num_done_));
+                flags_randomizers_[i]->AddData(tmp_flags);
+                num_done_++;
             }
             for (int i = 0; i < targets_readers_.size(); i++) {
                 Posterior targets = targets_readers_[i]->Value(utt);
@@ -115,12 +129,15 @@ void FrameDataReader::FillRandomizer() {
         }
     }
     // Randomize
-    const std::vector<int32>& mask = randomizer_mask_.Generate(feature_randomizers_[0]->NumFrames());
-    for (int i = 0; i < feature_randomizers_.size(); i++) {
-        feature_randomizers_[i]->Randomize(mask);
-    }
-    for (int i = 0; i < targets_randomizers_.size(); i++) {
-        targets_randomizers_[i]->Randomize(mask);
+    if (randomize_) {
+      const std::vector<int32>& mask = randomizer_mask_.Generate(feature_randomizers_[0]->NumFrames());
+      for (int i = 0; i < feature_randomizers_.size(); i++) {
+          feature_randomizers_[i]->Randomize(mask);
+          flags_randomizers_[i]->Randomize(mask);
+      }
+      for (int i = 0; i < targets_randomizers_.size(); i++) {
+          targets_randomizers_[i]->Randomize(mask);
+      }
     }
 }
 
@@ -150,7 +167,8 @@ void FrameDataReader::ReadData(std::vector<const CuMatrixBase<BaseFloat> *> *inp
 }
 
 
-bool FrameDataReader::ReadData(const CuMatrixBase<BaseFloat> **feat, const Posterior **targets) {
+bool FrameDataReader::ReadData(const CuMatrixBase<BaseFloat> **feat, const Posterior **targets,
+                               const Vector<BaseFloat> **flags) {
     KALDI_ASSERT(feat != NULL);
     KALDI_ASSERT(targets != NULL);
     KALDI_ASSERT(num_input_ == 1);
@@ -170,6 +188,9 @@ bool FrameDataReader::ReadData(const CuMatrixBase<BaseFloat> **feat, const Poste
         const Posterior &tgt = targets_randomizers_[0]->Value();
         *targets = &tgt;
         targets_randomizers_[0]->Next();
+        const Vector<BaseFloat> &flgs = flags_randomizers_[0]->Value();
+        *flags = &flgs;
+        flags_randomizers_[0]->Next();
         return true;
     }
     return false;

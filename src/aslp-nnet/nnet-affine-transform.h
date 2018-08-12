@@ -61,6 +61,7 @@ class AffineTransform : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     float bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
+    int xavier_flag = 0;
     float learn_rate_coef = 1.0, bias_learn_rate_coef = 1.0;
     float max_norm = 0.0, norm_init_scale = 1.0;
 	bool guass_init = true;
@@ -78,6 +79,7 @@ class AffineTransform : public UpdatableComponent {
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
       else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef);
       else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm);
+      else if (token == "<Xavier>") ReadBasicType(is, false, &xavier_flag);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
       is >> std::ws; // eat-up whitespace
@@ -86,7 +88,7 @@ class AffineTransform : public UpdatableComponent {
     //
     // initialize
     //
-    if (!guass_init) {
+    if (!guass_init || xavier_flag) {
 		// Normlized initialization(Glorot-Bengio initialization)
 		float scale = norm_init_scale * sqrt(6.0 / (linearity_.NumRows()+linearity_.NumCols()));
 		InitMatParam(linearity_, scale);

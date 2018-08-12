@@ -31,6 +31,7 @@
 
 #include "aslp-nnet/nnet-trnopts.h"
 #include "aslp-nnet/nnet-component.h"
+#include "aslp-nnet/nnet-deep-fsmn.h"
 
 namespace kaldi {
 namespace aslp_nnet {
@@ -172,6 +173,8 @@ class Nnet {
   void AssignComponentId(std::vector<Component*> &components); 
   /// sort component based on component id
   void SortComponent(std::vector<Component*> &components);
+  /// For FSMN component
+  void SetFlags(const Vector<BaseFloat> &flags);
  private:
    void InitInputOutput();
   /// Vector which contains all the components composing the neural network,

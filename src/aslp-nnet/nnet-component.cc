@@ -37,6 +37,7 @@
 #include "aslp-nnet/nnet-gru-streams.h"
 #include "aslp-nnet/nnet-lstm-couple-if-projected-streams.h"
 #include "aslp-nnet/nnet-cfsmn-component.h"
+#include "aslp-nnet/nnet-deep-fsmn.h"
 
 #include <sstream>
 
@@ -78,6 +79,8 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kCompactFsmn, "<CompactFsmn>"},
   { Component::kPnormComponent, "<Pnorm>"},
   { Component::kPnormComponent, "<Maxout>"},
+  // FSMN
+  { Component::kDeepFsmn, "<DeepFsmn>" },
 };
 
 
@@ -199,6 +202,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kMaxoutComponent:
 	  ans = new MaxoutComponent(input_dim, output_dim);
+      break;
+    case Component::kDeepFsmn:
+      ans = new DeepFsmn(input_dim, output_dim);
       break;
     case Component::kUnknown :
     default :
