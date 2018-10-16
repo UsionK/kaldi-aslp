@@ -33,6 +33,8 @@
 #include "aslp-nnet/nnet-lstm-couple-if-projected-streams.h"
 #include "aslp-nnet/nnet-batch-normalization.h"
 #include "aslp-nnet/nnet-cfsmn-component.h"
+#include "aslp-nnet/nnet-fsmn.h"
+#include "aslp-nnet/nnet-deep-fsmn.h"
 
 namespace kaldi {
 namespace aslp_nnet {
@@ -959,10 +961,10 @@ void Nnet::SortComponent(std::vector<Component*> &comp) {
 
 void Nnet::SetFlags(const Vector<BaseFloat> &flags) {    
   for (int32 c = 0; c < NumComponents(); c++) {
-    // if (GetComponent(c).GetType() == Component::kFsmn) {
-    //   Fsmn& comp = dynamic_cast<Fsmn&>(GetComponent(c));
-    //   comp.SetFlags(flags);
-    // }
+    if (GetComponent(c).GetType() == Component::kFsmn) {
+      Fsmn& comp = dynamic_cast<Fsmn&>(GetComponent(c));
+      comp.SetFlags(flags);
+    }
     if (GetComponent(c).GetType() == Component::kDeepFsmn) {
       DeepFsmn& comp = dynamic_cast<DeepFsmn&>(GetComponent(c));
       comp.SetFlags(flags);

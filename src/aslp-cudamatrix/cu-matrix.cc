@@ -3104,6 +3104,7 @@ void CuMatrixBase<Real>::GenMemory(const CuMatrixBase<Real>& in, const CuMatrixB
     const Real *src_data = in.data_;
     const Real *LF = l_filter.data_;
     const Real *RF = r_filter.data_;
+    BaseFloat* flag = flags.Data();
     int shift_index = 0;
     int rows = NumRows();
     int cols = NumCols();
@@ -3115,7 +3116,7 @@ void CuMatrixBase<Real>::GenMemory(const CuMatrixBase<Real>& in, const CuMatrixB
         for (int order = 0; order < l_order; order++)
         {
           shift_index = r - order*l_stride;
-          if (shift_index >= 0)
+          if (shift_index >= 0 && flag[shift_index] == flag[r])
           {
             data[index] += src_data[shift_index*stride + c] * LF[order*stride + c];
           }
@@ -3123,7 +3124,7 @@ void CuMatrixBase<Real>::GenMemory(const CuMatrixBase<Real>& in, const CuMatrixB
         for (int order = 1; order < r_order + 1; order++)
         {
           shift_index = r + order*r_stride;
-          if (shift_index < rows)
+          if (shift_index < rows && flag[shift_index] == flag[r])
           {
             data[index] += src_data[shift_index*stride + c] * RF[(order - 1)*stride + c];
           }

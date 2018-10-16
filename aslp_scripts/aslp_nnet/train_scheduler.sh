@@ -107,7 +107,6 @@ for iter in $(seq -w $max_iters); do
   log=$dir/log/iter${iter}.tr.log; hostname>$log
   $train_tool $train_tool_opts \
     --cross-validate=false \
-    --randomize=true \
     --verbose=$verbose \
     --learn-rate=$learn_rate \
     --momentum=$momentum \

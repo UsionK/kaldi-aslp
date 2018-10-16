@@ -18,17 +18,17 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_NNET_FSMN_H_
-#define KALDI_NNET_NNET_FSMN_H_
+#ifndef ASLP_NNET_NNET_FSMN_H_
+#define ASLP_NNET_NNET_FSMN_H_
 
-#include "nnet/nnet-component.h"
-#include "nnet/nnet-utils.h"
-#include "cudamatrix/cu-math.h"
-#include "cudamatrix/cu-kernels.h"
+#include "aslp-nnet/nnet-component.h"
+#include "aslp-nnet/nnet-utils.h"
+#include "aslp-cudamatrix/cu-math.h"
+#include "aslp-cudamatrix/cu-kernels.h"
 
 
 namespace kaldi {
-namespace nnet1 {
+namespace aslp_nnet {
  class Fsmn : public UpdatableComponent {
   public:
    Fsmn(int32 dim_in, int32 dim_out)
@@ -74,11 +74,11 @@ namespace nnet1 {
      // initialize filter
      range = sqrt(6)/sqrt(l_order + input_dim_);
      l_filter_.Resize(l_order, input_dim_, kSetZero);
-     RandUniform(0.0, range, &l_filter_);
+     RandUniform2(0.0, range, &l_filter_);
 
      range = sqrt(6)/sqrt(r_order + input_dim_);
      r_filter_.Resize(r_order, input_dim_, kSetZero);
-     RandUniform(0.0, range, &r_filter_);
+     RandUniform2(0.0, range, &r_filter_);
    }
 
    void ReadData(std::istream &is, bool binary) {
@@ -138,12 +138,19 @@ namespace nnet1 {
      return l_filter_.NumRows()*l_filter_.NumCols() + r_filter_.NumRows()*r_filter_.NumCols(); 
    }
 
-   void GetParams(VectorBase<BaseFloat>* wei_copy) const {
+   void GetParams(Vector<BaseFloat>* wei_copy) const {
+     wei_copy->Resize(NumParams());
      KALDI_ASSERT(wei_copy->Dim() == NumParams());
      int32 l_filter_num_elem = l_filter_.NumRows() * l_filter_.NumCols();
      int32 r_filter_num_elem = r_filter_.NumRows() * r_filter_.NumCols();
      wei_copy->Range(0, l_filter_num_elem).CopyRowsFromMat(l_filter_);
      wei_copy->Range(l_filter_num_elem, r_filter_num_elem).CopyRowsFromMat(r_filter_);
+   }
+
+   void GetGpuParams(std::vector<std::pair<BaseFloat *, int> > *params) {
+     params->clear();
+     params->push_back(std::make_pair(l_filter_.Data(), l_filter_.NumRows() * l_filter_.Stride()));
+     params->push_back(std::make_pair(r_filter_.Data(), r_filter_.NumRows() * r_filter_.Stride()));
    }
 
    void SetParams(const VectorBase<BaseFloat> &wei_copy) {
@@ -183,8 +190,14 @@ namespace nnet1 {
 
      in_diff->MemoryErrBack(out_diff, l_filter_, r_filter_, flags_, l_order_, r_order_, l_stride_, r_stride_);
 
+     KALDI_LOG << in;
+     KALDI_LOG << l_filter_;
+     KALDI_LOG << r_filter_;
+     KALDI_LOG << out_diff;
      l_filter_.GetLfilterErr(out_diff, in, flags_, l_order_, l_stride_, lr);
      r_filter_.GetRfilterErr(out_diff, in, flags_, r_order_, r_stride_, lr);
+     KALDI_LOG << l_filter_;
+     KALDI_LOG << r_filter_;
 
    }
 
@@ -205,7 +218,7 @@ namespace nnet1 {
    int r_stride_;  
  };
 
-} // namespace nnet1
+} // namespace aslp_nnet
 } // namespace kaldi
 
 #endif

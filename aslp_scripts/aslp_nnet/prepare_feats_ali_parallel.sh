@@ -9,6 +9,7 @@
 # feature processing,
 splice=5            # (default) splice features both-ways along time axis,
 cmvn_opts= #eg. "--norm-means=true --norm-vars=true" # (optional) adds 'apply-cmvn' to input feature pipeline, see opts,
+global_cmvn=
 delta_opts= #eg. "--delta-order=2" # (optional) adds 'add-deltas' to input feature pipeline, see opts,
 splice_opts= #eg. "--left-context=4 --right-context=4"
 
@@ -126,11 +127,11 @@ fi
 utils/shuffle_list.pl --srand ${seed:-777} <$dir/train_sorted.scp >$dir/train.scp
 
 # create a 10k utt subset for global cmvn estimates,
-head -n 10000 $dir/train.scp > $dir/train.scp.10k
+# head -n 10000 $dir/train.scp > $dir/train.scp.10k
 
 # for debugging, add lists with non-local features,
-utils/shuffle_list.pl --srand ${seed:-777} <$data/feats.scp >$dir/train.scp_non_local
-cp $data_cv/feats.scp $dir/cv.scp_non_local
+# utils/shuffle_list.pl --srand ${seed:-777} <$data/feats.scp >$dir/train.scp_non_local
+# cp $data_cv/feats.scp $dir/cv.scp_non_local
 
 ###### PREPARE FEATURE PIPELINE FOR SINGLE WORKER ######
 # read the features,
@@ -140,11 +141,18 @@ feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
 
 # optionally add per-speaker CMVN,
 if [ ! -z "$cmvn_opts" ]; then
-  echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
-  [ ! -r $data/cmvn.scp ] && echo "Missing $data/cmvn.scp" && exit 1;
-  [ ! -r $data_cv/cmvn.scp ] && echo "Missing $data_cv/cmvn.scp" && exit 1;
-  feats_tr="$feats_tr apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp ark:- ark:- |"
-  feats_cv="$feats_cv apply-cmvn $cmvn_opts --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp ark:- ark:- |"
+  if [ ! -z "$global_cmvn" ]; then
+    echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $global_cmvn"
+    [ ! -r $global_cmvn ] && echo "Missing $global_cmvn" && exit 1;
+    feats_tr="$feats_tr apply-cmvn $cmvn_opts $global_cmvn ark:- ark:- |"
+    feats_cv="$feats_cv apply-cmvn $cmvn_opts $global_cmvn ark:- ark:- |"
+  else
+    echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
+    [ ! -r $data/cmvn.scp ] && echo "Missing $data/cmvn.scp" && exit 1;
+    [ ! -r $data_cv/cmvn.scp ] && echo "Missing $data_cv/cmvn.scp" && exit 1;
+    feats_tr="$feats_tr apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp ark:- ark:- |"
+    feats_cv="$feats_cv apply-cmvn $cmvn_opts --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp ark:- ark:- |"
+  fi
 else
   echo "# 'apply-cmvn' is not used,"
 fi
@@ -180,9 +188,15 @@ for n in `seq $num_worker`; do
 
   # optionally add per-speaker CMVN,
   if [ ! -z "$cmvn_opts" ]; then
-    echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp"
-    [ ! -r $sdata/$n/cmvn.scp ] && echo "Missing $sdata/$n/cmvn.scp" && exit 1;
-    feats_tr_tmp="$feats_tr_tmp apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/$n/utt2spk scp:$sdata/$n/cmvn.scp ark:- ark:- |"
+    if [ ! -z "$global_cmvn" ]; then
+      echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $global_cmvn"
+      [ ! -r $global_cmvn ] && echo "Missing $global_cmvn" && exit 1;
+      feats_tr_tmp="$feats_tr_tmp apply-cmvn $cmvn_opts $global_cmvn ark:- ark:- |"
+    else
+      echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp"
+      [ ! -r $sdata/$n/cmvn.scp ] && echo "Missing $sdata/$n/cmvn.scp" && exit 1;
+      feats_tr_tmp="$feats_tr_tmp apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/$n/utt2spk scp:$sdata/$n/cmvn.scp ark:- ark:- |"
+    fi
   else
     echo "# 'apply-cmvn' is not used,"
   fi
@@ -205,6 +219,7 @@ done
 
 # Keep track of the config,
 [ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
+[ ! -z "$global_cmvn" ] && echo "$global_cmvn" >$dir/global_cmvn_opts
 [ ! -z "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
 [ ! -z "$splice_opts" ] && echo "$splice_opts" >$dir/splice_opts
 exit 0;

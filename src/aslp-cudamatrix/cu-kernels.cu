@@ -25,6 +25,7 @@
 // In this file is the CUDA code of the CUDA kernels, plus the ANSI-C wrappers
 
 #include <cfloat>
+#include <cstdio>
 #include "aslp-cudamatrix/cu-kernels-ansi.h"
 #include "aslp-cudamatrix/ctc-utils.h"
 
@@ -3820,6 +3821,12 @@ static void _get_l_filter_err(Real* out, const Real* diff, const Real* in, float
     nTotalThreads = ((1 + nTotalThreads) >> 1);   // divide by two.
   }
     Real sum = aux[0];
+    // printf("_get_l_filter_err(): gradient is %f (%d, %d)\n", sum, blockIdx.x, threadIdx.x);
+    // if (sum > 500) {
+    //     sum = 500;
+    // } else if (sum < -500) {
+    //     sum = -500;
+    // }
   __syncthreads();
     out[index] = out[index]-lr*sum;
 }
@@ -3887,6 +3894,13 @@ static void _get_r_filter_err(Real* out, const Real* diff, const Real* in, float
   }
   
     Real sum = aux[0];
+    // printf("_get_r_filter_err(): gradient is %f (%d, %d)\n", sum, blockIdx.x, threadIdx.x);
+    // temp clip
+    // if (sum > 500) {
+    //     sum = 500;
+    // } else if (sum < -500) {
+    //     sum = -500;
+    // }
      __syncthreads();
   out[index] = out[index]-lr*sum;
 }
@@ -3945,23 +3959,27 @@ void cudaF_get_l_filter_err(dim3 Gr, dim3 Bl, float *mat_out, const float *diff,
                             int l_order, int l_stride, float lr)
 {
   _get_l_filter_err <<<Gr, Bl >>>(mat_out, diff, mat_in, flags, d, l_order, l_stride, lr);
+  // cudaDeviceSynchronize();
 }
 
 void cudaD_get_l_filter_err(dim3 Gr, dim3 Bl, double *mat_out, const double *diff, const double* mat_in, float* flags, MatrixDim d, 
                             int l_order, int l_stride, float lr)
 {
   _get_l_filter_err <<<Gr, Bl >>>(mat_out, diff, mat_in, flags, d, l_order, l_stride, lr);
+  // cudaDeviceSynchronize();
 }
 
 void cudaF_get_r_filter_err(dim3 Gr, dim3 Bl, float *mat_out, const float *diff, const float* mat_in, float* flags, MatrixDim d, 
                             int r_order, int r_stride, float lr)
 {
   _get_r_filter_err <<<Gr, Bl >>>(mat_out, diff, mat_in, flags, d, r_order, r_stride, lr);
+  // cudaDeviceSynchronize();
 }
 
 void cudaD_get_r_filter_err(dim3 Gr, dim3 Bl, double *mat_out, const double *diff, const double* mat_in, float* flags, MatrixDim d, 
                             int r_order, int r_stride, float lr)
 {
   _get_r_filter_err <<<Gr, Bl >>>(mat_out, diff, mat_in, flags, d, r_order, r_stride, lr);
+  // cudaDeviceSynchronize();
 }
 

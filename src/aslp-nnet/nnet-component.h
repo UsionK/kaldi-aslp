@@ -101,6 +101,7 @@ class Component {
     kPnormComponent,
     kMaxoutComponent,
 
+    kFsmn,
     kDeepFsmn
   } ComponentType;
   /// A pair of type and marker 

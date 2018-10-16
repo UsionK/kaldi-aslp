@@ -31,7 +31,6 @@
 
 #include "aslp-nnet/nnet-trnopts.h"
 #include "aslp-nnet/nnet-component.h"
-#include "aslp-nnet/nnet-deep-fsmn.h"
 
 namespace kaldi {
 namespace aslp_nnet {

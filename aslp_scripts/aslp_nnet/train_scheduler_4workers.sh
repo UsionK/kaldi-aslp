@@ -122,7 +122,7 @@ for iter in $(seq -w $max_iters); do
   # training,
   log=$dir/log/iter${iter}.tr.log; hostname>$log
 
-  train_tool_opts="$train_tool_opts --randomize=true --verbose=$verbose --learn-rate=$learn_rate --momentum=$momentum --minibatch-size=$minibatch_size"
+  train_tool_opts="$train_tool_opts --verbose=$verbose --learn-rate=$learn_rate --momentum=$momentum --minibatch-size=$minibatch_size"
   train_tool_opts="$train_tool_opts --randomizer-size=$randomizer_size --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty"
   
   # Mpi parallel training
