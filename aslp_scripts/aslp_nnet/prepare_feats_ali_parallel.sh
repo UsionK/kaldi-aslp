@@ -9,7 +9,7 @@
 # feature processing,
 splice=5            # (default) splice features both-ways along time axis,
 cmvn_opts= #eg. "--norm-means=true --norm-vars=true" # (optional) adds 'apply-cmvn' to input feature pipeline, see opts,
-global_cmvn=
+global_cmvn_file=
 delta_opts= #eg. "--delta-order=2" # (optional) adds 'add-deltas' to input feature pipeline, see opts,
 splice_opts= #eg. "--left-context=4 --right-context=4"
 
@@ -141,11 +141,11 @@ feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
 
 # optionally add per-speaker CMVN,
 if [ ! -z "$cmvn_opts" ]; then
-  if [ ! -z "$global_cmvn" ]; then
-    echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $global_cmvn"
-    [ ! -r $global_cmvn ] && echo "Missing $global_cmvn" && exit 1;
-    feats_tr="$feats_tr apply-cmvn $cmvn_opts $global_cmvn ark:- ark:- |"
-    feats_cv="$feats_cv apply-cmvn $cmvn_opts $global_cmvn ark:- ark:- |"
+  if [ ! -z "$global_cmvn_file" ]; then
+    echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $global_cmvn_file"
+    [ ! -r $global_cmvn_file ] && echo "Missing $global_cmvn_file" && exit 1;
+    feats_tr="$feats_tr apply-cmvn $cmvn_opts $global_cmvn_file ark:- ark:- |"
+    feats_cv="$feats_cv apply-cmvn $cmvn_opts $global_cmvn_file ark:- ark:- |"
   else
     echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
     [ ! -r $data/cmvn.scp ] && echo "Missing $data/cmvn.scp" && exit 1;
@@ -188,10 +188,10 @@ for n in `seq $num_worker`; do
 
   # optionally add per-speaker CMVN,
   if [ ! -z "$cmvn_opts" ]; then
-    if [ ! -z "$global_cmvn" ]; then
-      echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $global_cmvn"
-      [ ! -r $global_cmvn ] && echo "Missing $global_cmvn" && exit 1;
-      feats_tr_tmp="$feats_tr_tmp apply-cmvn $cmvn_opts $global_cmvn ark:- ark:- |"
+    if [ ! -z "$global_cmvn_file" ]; then
+      echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $global_cmvn_file"
+      [ ! -r $global_cmvn_file ] && echo "Missing $global_cmvn_file" && exit 1;
+      feats_tr_tmp="$feats_tr_tmp apply-cmvn $cmvn_opts $global_cmvn_file ark:- ark:- |"
     else
       echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp"
       [ ! -r $sdata/$n/cmvn.scp ] && echo "Missing $sdata/$n/cmvn.scp" && exit 1;
@@ -219,7 +219,7 @@ done
 
 # Keep track of the config,
 [ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
-[ ! -z "$global_cmvn" ] && echo "$global_cmvn" >$dir/global_cmvn_opts
+[ ! -z "$global_cmvn_file" ] && echo "$global_cmvn_file" >$dir/global_cmvn_opts
 [ ! -z "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
 [ ! -z "$splice_opts" ] && echo "$splice_opts" >$dir/splice_opts
 exit 0;

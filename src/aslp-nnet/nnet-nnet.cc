@@ -64,6 +64,13 @@ Nnet & Nnet::operator = (const Nnet& other) {
   return *this;
 }
 
+void Nnet::Prepare(const ExtraInfo &info) {
+  for (int32 c = 0; c < NumComponents(); c++) {
+    if (GetComponent(c).GetType() == Component::kBiCompactVfsmn) {
+      components_[c]->Prepare(info);
+    }
+  }
+}
 
 Nnet::~Nnet() {
   Destroy();
@@ -140,6 +147,8 @@ void Nnet::Backpropagate(const std::vector<const CuMatrixBase<BaseFloat> *> &out
                 KALDI_ASSERT(input_idx[j] >= 0);
                 KALDI_ASSERT(input_idx[j] <= NumComponents());
                 int out_len = components_[input_idx[j]]->OutputDim();
+                // KALDI_LOG << output_diff_buf_[input_idx[j]].NumRows() << " " << output_diff_buf_[input_idx[j]].NumCols();
+                // KALDI_LOG << input_diff_buf_[i].NumRows() << " " << input_diff_buf_[i].NumRows();
                 output_diff_buf_[input_idx[j]].AddMat(1.0, 
                         input_diff_buf_[i].ColRange(offset[j], out_len));
             }

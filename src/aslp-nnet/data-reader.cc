@@ -18,13 +18,18 @@ FrameDataReader::FrameDataReader(
         num_output_(targets_rspecifiers.size()),
         rand_opts_(rand_opts), read_done_(false),
         num_done_(0), randomize_(randomize) {
+    // KALDI_LOG << "ctor randomize_ " << randomize_;
     feature_readers_.resize(num_input_);
     feature_randomizers_.resize(num_input_);
     flags_randomizers_.resize(num_input_);
+    bposition_randomizers_.resize(num_input_);
+    fposition_randomizers_.resize(num_input_);
     for (int i = 0; i < num_input_; i++) {
         feature_readers_[i] = new SequentialBaseFloatMatrixReader(feature_rspecifiers[i]);
         feature_randomizers_[i] = new MatrixRandomizer(rand_opts_);
         flags_randomizers_[i] = new VectorRandomizer(rand_opts_);
+        bposition_randomizers_[i] = new MatrixRandomizer(rand_opts_);
+        fposition_randomizers_[i] = new MatrixRandomizer(rand_opts_);
     }
     targets_readers_.resize(num_output_);
     targets_randomizers_.resize(num_output_);
@@ -43,7 +48,7 @@ FrameDataReader::FrameDataReader(const std::string &feature_rspecifier,
     feature_rspecifiers.push_back(feature_rspecifier);
     std::vector<std::string> targets_rspecifiers;
     targets_rspecifiers.push_back(targets_rspecifier);
-    new (this) FrameDataReader(feature_rspecifiers, targets_rspecifiers, rand_opts);
+    new (this) FrameDataReader(feature_rspecifiers, targets_rspecifiers, rand_opts, randomize);
 }
 
 FrameDataReader::~FrameDataReader() {
@@ -55,6 +60,8 @@ FrameDataReader::~FrameDataReader() {
     }
     for (int i = 0; i < flags_randomizers_.size(); i++) {
         delete flags_randomizers_[i];
+        delete bposition_randomizers_[i];
+        delete fposition_randomizers_[i];
     }
     for (int i = 0; i < targets_readers_.size(); i++) {
         delete targets_readers_[i];
@@ -109,10 +116,25 @@ void FrameDataReader::FillRandomizer() {
                 }
                 feature_randomizers_[i]->AddData(CuMatrix<BaseFloat>(mat));
 
+                // generate bposition matrix for this utt
+                int32 row = mat.NumRows();
+                Matrix<BaseFloat> bposi(row, 1.0);
+                for (int32 j = 0; j < row; ++j) {
+                  bposi(j, 0) = (BaseFloat)j;
+                }
+                // generate fposition matrix for this utt
+                Matrix<BaseFloat> fposi(row, 1.0);
+                for (int32 j = 0; j < row; ++j) {
+                  fposi(j, 0) = (BaseFloat)(row - j - 1);
+                }
+                bposition_randomizers_[i]->AddData(CuMatrix<BaseFloat>(bposi));
+                fposition_randomizers_[i]->AddData(CuMatrix<BaseFloat>(fposi));
+
                 Vector<BaseFloat> tmp_flags;
                 tmp_flags.Resize(mat.NumRows(), kSetZero);
                 tmp_flags.Set(BaseFloat(num_done_));
                 flags_randomizers_[i]->AddData(tmp_flags);
+
                 num_done_++;
             }
             for (int i = 0; i < targets_readers_.size(); i++) {
@@ -134,6 +156,8 @@ void FrameDataReader::FillRandomizer() {
       for (int i = 0; i < feature_randomizers_.size(); i++) {
           feature_randomizers_[i]->Randomize(mask);
           flags_randomizers_[i]->Randomize(mask);
+          bposition_randomizers_[i]->Randomize(mask);
+          fposition_randomizers_[i]->Randomize(mask);
       }
       for (int i = 0; i < targets_randomizers_.size(); i++) {
           targets_randomizers_[i]->Randomize(mask);
@@ -168,7 +192,8 @@ void FrameDataReader::ReadData(std::vector<const CuMatrixBase<BaseFloat> *> *inp
 
 
 bool FrameDataReader::ReadData(const CuMatrixBase<BaseFloat> **feat, const Posterior **targets,
-                               const Vector<BaseFloat> **flags) {
+                               const Vector<BaseFloat> **flags,
+                               const CuMatrixBase<BaseFloat> **bpos, const CuMatrixBase<BaseFloat> **fpos) {
     KALDI_ASSERT(feat != NULL);
     KALDI_ASSERT(targets != NULL);
     KALDI_ASSERT(num_input_ == 1);
@@ -189,8 +214,39 @@ bool FrameDataReader::ReadData(const CuMatrixBase<BaseFloat> **feat, const Poste
         *targets = &tgt;
         targets_randomizers_[0]->Next();
         const Vector<BaseFloat> &flgs = flags_randomizers_[0]->Value();
+        // KALDI_LOG << "randomize_ " << randomize_;
         *flags = &flgs;
         flags_randomizers_[0]->Next();
+
+        const CuMatrixBase<BaseFloat> &bposition = bposition_randomizers_[0]->Value();
+        // process the begin of bposition matrix, if it is not a new utt but
+        // is a part of utt of the end utt in last minibatch
+        if (bposition(0, 0) != 0.0) {
+            int32 i = 0;
+            BaseFloat start_idx = bposition(0, 0);
+            while (bposition(i, 0) != 0.0 && i < bposition.NumRows()) {
+                bposition.RowRange(i, 1).Set(bposition(i, 0) - start_idx);
+                ++i;
+            }
+        }
+        KALDI_ASSERT(bposition(0, 0) == 0.0);
+        *bpos= &bposition;
+        bposition_randomizers_[0]->Next();
+
+        const CuMatrixBase<BaseFloat> &fposition = fposition_randomizers_[0]->Value();
+        // process the end of fposition matrix, if it is a part of new utt
+        int32 row = fposition.NumRows();
+        if (fposition(row - 1, 0) != 0.0) {
+            int32 i = row - 1;
+            BaseFloat end_idx = fposition(row - 1, 0);
+            while (fposition(i, 0) != 0.0 && i >= 0) {
+                fposition.RowRange(i, 1).Set(fposition(i, 0) - end_idx);
+                --i;
+            }
+        }
+        KALDI_ASSERT(fposition(row - 1, 0) == 0.0);
+        *fpos= &fposition;
+        fposition_randomizers_[0]->Next();
         return true;
     }
     return false;

@@ -142,12 +142,17 @@ int main(int argc, char *argv[]) {
         CuMatrix<BaseFloat> nnet_out, obj_diff;
         const Posterior *nnet_tgt;
         const Vector<BaseFloat> *flags;
+        const CuMatrixBase<BaseFloat> *bposition;
+        const CuMatrixBase<BaseFloat> *fposition;
 
 
         while (!reader.Done()) {
-            reader.ReadData(&nnet_in, &nnet_tgt, &flags); 
+            reader.ReadData(&nnet_in, &nnet_tgt, &flags, &bposition, &fposition); 
             // Forward pass
             nnet.SetFlags(*flags);
+            ExtraInfo info(*bposition, *fposition);
+            // send bposition matrix to fsmn component
+            nnet.Prepare(info);
             nnet.Propagate(*nnet_in, &nnet_out);
             // Eval loss
             loss->Eval(nnet_out, *nnet_tgt, &obj_diff);

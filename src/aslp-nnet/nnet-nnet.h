@@ -44,6 +44,8 @@ class Nnet {
   ~Nnet();
 
  public:
+  /// Send position matrix to fsmn component
+  void Prepare(const ExtraInfo &info);
   /// Perform forward pass through the network
   void Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out);
   /// Perform forward pass with multi-input and multi-output

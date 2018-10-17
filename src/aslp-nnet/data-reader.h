@@ -33,7 +33,8 @@ public:
                     bool randomize = true);
     ~FrameDataReader();
     bool ReadData(const CuMatrixBase<BaseFloat> **feat, const Posterior **targets,
-                  const Vector<BaseFloat> **flags = NULL); 
+                  const Vector<BaseFloat> **flags = NULL,
+                  const CuMatrixBase<BaseFloat> **bpos = NULL, const CuMatrixBase<BaseFloat> **fpos = NULL);
     void ReadData(std::vector<const CuMatrixBase<BaseFloat > *> *input, 
                   std::vector<const Posterior *> *output); 
     bool Done();
@@ -45,6 +46,8 @@ private:
     std::vector<MatrixRandomizer *> feature_randomizers_;
     std::vector<PosteriorRandomizer *> targets_randomizers_;
     std::vector<VectorRandomizer *> flags_randomizers_;
+    std::vector<MatrixRandomizer *> bposition_randomizers_;
+    std::vector<MatrixRandomizer *> fposition_randomizers_;
     int num_input_, num_output_;
     const NnetDataRandomizerOptions &rand_opts_;
     bool read_done_;

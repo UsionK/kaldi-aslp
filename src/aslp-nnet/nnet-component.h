@@ -36,6 +36,23 @@
 namespace kaldi {
 namespace aslp_nnet {
 
+struct ExtraInfo {
+  // look backward position info
+  const CuMatrixBase<BaseFloat> &bposition;
+  // look forward position info
+  const CuMatrixBase<BaseFloat> &fposition;
+
+  ExtraInfo(const CuMatrixBase<BaseFloat> &bpos,
+            const CuMatrixBase<BaseFloat> &fpos):
+            bposition(bpos), fposition(fpos) { }
+
+  ExtraInfo(const CuMatrixBase<BaseFloat> &bpos):
+            bposition(bpos), fposition(CuMatrix<BaseFloat>()) { }
+
+  ExtraInfo() : bposition(CuMatrix<BaseFloat>()), 
+                fposition(CuMatrix<BaseFloat>()) { }
+};
+
 /**
  * Abstract class, building block of the network.
  * It is able to propagate (PropagateFnc: compute the output based on its input)
@@ -102,7 +119,8 @@ class Component {
     kMaxoutComponent,
 
     kFsmn,
-    kDeepFsmn
+    kDeepFsmn,
+    kBiCompactVfsmn
   } ComponentType;
   /// A pair of type and marker 
   struct key_value {
@@ -131,6 +149,8 @@ class Component {
   virtual bool IsUpdatable() const { 
     return false; 
   }
+  /// Set position matrix in fsmn component
+  virtual void Prepare(const ExtraInfo &info) { }
 
   /// Get size of input vectors
   int32 InputDim() const { 

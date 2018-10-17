@@ -3,14 +3,14 @@
 # Copyright 2016  ASLP (Author: zhangbinbin)
 # Apache 2.0
 
-stage=0
+stage=1
 feat_dir=data/data6400h
 global_cmvn=data/data6400h/train_tr/global-cmvn
 gmmdir=exp/tri2b
 ali=exp/tri2b_dnn_6400h_data6400h_ali
 skip_width=0
 gpu_id=5
-lr=0.00001
+lr=0.0000001
 dir=exp/4dfsmn_bmuf-lr$lr
 num_cv_utt=10000
 #graph=graph_000_009_kni_p1e8_3gram
@@ -49,7 +49,7 @@ if [ $stage -le 1 ]; then
     echo "Preparing alignment and feats"
     aslp_scripts/aslp_nnet/prepare_feats_ali_parallel.sh \
         --cmvn_opts "--norm-means=true --norm-vars=true" \
-        --global-cmvn "$global_cmvn" \
+        --global-cmvn-file "$global_cmvn" \
         --splice_opts "--left-context=1 --right-context=1" \
         --num-worker 4 \
 	    $feat_dir/train_tr $feat_dir/train_cv data/lang $ali $ali $dir || exit 1;

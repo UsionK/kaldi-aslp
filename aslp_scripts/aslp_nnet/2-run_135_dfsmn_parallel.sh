@@ -49,7 +49,7 @@ if [ $stage -le 1 ]; then
     echo "Preparing alignment and feats"
     aslp_scripts/aslp_nnet/prepare_feats_ali_parallel.sh \
         --cmvn_opts "--norm-means=true --norm-vars=true" \
-        --global-cmvn "$global_cmvn" \
+        --global-cmvn-file "$global_cmvn" \
         --splice_opts "--left-context=1 --right-context=1" \
         --num-worker 4 \
 	    $feat_dir/train_tr $feat_dir/train_cv data/lang $ali $ali $dir || exit 1;

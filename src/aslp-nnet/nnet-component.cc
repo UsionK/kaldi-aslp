@@ -39,6 +39,7 @@
 #include "aslp-nnet/nnet-cfsmn-component.h"
 #include "aslp-nnet/nnet-fsmn.h"
 #include "aslp-nnet/nnet-deep-fsmn.h"
+#include "aslp-nnet/nnet-bi-compact-vfsmn.h"
 
 #include <sstream>
 
@@ -83,6 +84,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   // FSMN
   { Component::kFsmn, "<Fsmn>" },
   { Component::kDeepFsmn, "<DeepFsmn>" },
+  { Component::kBiCompactVfsmn, "<BiCompactVfsmn>" },
 };
 
 
@@ -210,6 +212,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kDeepFsmn:
       ans = new DeepFsmn(input_dim, output_dim);
+      break;
+    case Component::kBiCompactVfsmn :
+      ans = new BiCompactVfsmn(input_dim, output_dim);
       break;
     case Component::kUnknown :
     default :

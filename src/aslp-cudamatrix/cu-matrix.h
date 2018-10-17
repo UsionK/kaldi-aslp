@@ -664,6 +664,26 @@ class CuMatrixBase {
   void UniMemoryErrBack(const CuMatrixBase<Real> &in, const CuMatrixBase<Real> &l_filter_, CuVectorBase<BaseFloat> &flags_, 
 		int l_order_, int l_stride_);
 
+  void BiVfsmnMemory(const CuMatrixBase<Real> &hidden,
+                     const CuMatrixBase<Real> &bfilter,
+                     const CuMatrixBase<Real> &ffilter,
+                     const CuMatrixBase<Real> &bposition,
+                     const CuMatrixBase<Real> &fposition);
+  void BiComputeVfsmnHiddenDiff(const CuMatrixBase<Real> &memory_diff,
+                                const CuMatrixBase<Real> &bfilter,
+                                const CuMatrixBase<Real> &ffilter,
+                                const CuMatrixBase<Real> &bposition,
+                                const CuMatrixBase<Real> &fposition);
+  void BiUpdateVfsmnBackfilter(const CuMatrixBase<Real> &memory_diff,
+                               const CuMatrixBase<Real> &hidden,
+                               const CuMatrixBase<Real> &bposition,
+                               Real alpha);
+  void BiUpdateVfsmnAheadfilter(const CuMatrixBase<Real> &memory_diff,
+                                const CuMatrixBase<Real> &hidden,
+                                const CuMatrixBase<Real> &fposition,
+                                Real alpha);
+ 
+
  protected:
 
   // The constructors are protected to prevent the user creating an instance of

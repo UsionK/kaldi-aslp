@@ -122,6 +122,8 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> skip_feat, skip_out;
     Matrix<BaseFloat> nnet_out_host;
 
+    // FSMN
+    CuMatrix<BaseFloat> bposition, fposition;
 
     Timer time;
     double time_now = 0;
@@ -148,7 +150,26 @@ int main(int argc, char *argv[]) {
           mat.CopyRowFromVec(mat.Row(last_row), r); // copy last row,
         }
       }
-      
+
+      // FSMN related info BEGIN
+      // if (have_fsmn) {
+      int32 row = mat.NumRows();
+      // generate bposition matrix for this utt
+      Matrix<BaseFloat> bposi(row, 1.0);
+      for (int32 i = 0; i < row; ++i) {
+        bposi(i, 0) = (BaseFloat)i;
+      }
+      // generate fposition matrix for this utt
+      Matrix<BaseFloat> fposi(row, 1.0);
+      for (int32 i = 0; i < row; ++i) {
+        fposi(i, 0) = (BaseFloat)(row - i - 1);
+      }
+      // push them to gpu
+      bposition = bposi;
+      fposition = fposi;
+      // }
+      // FSMN realted info END
+ 
       // push it to gpu,
       feats = mat;
 
@@ -186,6 +207,9 @@ int main(int argc, char *argv[]) {
       } else {
         frame_num_utt.push_back(feats_transf.NumRows());
         nnet.SetSeqLengths(frame_num_utt);
+
+        ExtraInfo info(bposition, fposition);
+        nnet.Prepare(info);
 
         Vector<BaseFloat> flags;
         flags.Resize(feats_transf.NumRows(), kSetZero);

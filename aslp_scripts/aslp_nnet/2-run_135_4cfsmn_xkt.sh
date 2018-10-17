@@ -3,16 +3,16 @@
 # Copyright 2016  ASLP (Author: zhangbinbin)
 # Apache 2.0
 
-stage=3
-feat_dir=data/data6400h
-global_cmvn=data/data6400h/train_tr/global-cmvn
+stage=1
+feat_dir=data/subset_of_data6400
+global_cmvn=data/subset_of_data6400/train_tr/global-cmvn
 gmmdir=exp/tri2b
-ali=exp/tri2b_dnn_6400h_data6400h_ali
+ali=exp/subset_of_data6400_ali
 skip_width=0
-gpu_id=5
-lr=0.000001
-dir=exp/6dfsmn_bmuf-lr$lr
-num_cv_utt=10000
+gpu_id=4
+lr=0.00001
+dir=exp/135-4cfsmn-xkt-lr$lr
+num_cv_utt=5000
 #graph=graph_000_009_kni_p1e8_3gram
 graph=graph
 sync_period=160000
@@ -67,23 +67,35 @@ if [ $stage -le 2 ]; then
     num_tgt=$(hmm-info --print-args=false $ali/final.mdl | grep pdfs | awk '{ print $NF }')
     echo $num_feat $num_tgt
 
-# Init nnet.proto with 2 lstm layers
+backorder=30  # cFSMN lookback order, use --backorder N
+aheadorder=30  # cFSMN lookahead order, use --aheadorder N
+
+# BcFSMN config: 3x40-4x_2048-512-30-30_2x2048-512
+# one BiCompactVfsmn layer = [AffineTransform-ReLU-AffineTransform-BiCompactVfsmn]
+#                             (   hidden layer   ) (  projection ) (   vFSMN   ) 
 cat > $dir/nnet.proto <<EOF
 <NnetProto>
-<AffineTransform> <InputDim> $num_feat <OutputDim> 2048 <MaxNorm> 0.000000 <Xavier> 1
+<AffineTransform> <InputDim> $num_feat <OutputDim> 2048 <Xavier> 1
 <ReLU> <InputDim> 2048 <OutputDim> 2048
-<LinearTransform> <InputDim> 2048 <OutputDim> 512 <ParamStddev> 0.010000 <Xavier> 1
-<Fsmn> <InputDim> 512 <OutputDim> 512  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
-<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
-<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
-<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
-<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
-<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<AffineTransform> <InputDim> 2048 <OutputDim> 512 <Xavier> 1
+<BiCompactVfsmn> <InputDim> 512 <OutputDim> 512 <BackOrder> $backorder <AheadOrder> $aheadorder
 <AffineTransform> <InputDim> 512 <OutputDim> 2048 <Xavier> 1
-<ReLU> <InputDim> 2048 <OutputDim> 2048
+<ReLU> <InputDim> 2048 <OutputDim> 2048 
+<AffineTransform> <InputDim> 2048 <OutputDim> 512 <Xavier> 1
+<BiCompactVfsmn> <InputDim> 512 <OutputDim> 512 <BackOrder> $backorder <AheadOrder> $aheadorder
+<AffineTransform> <InputDim> 512 <OutputDim> 2048 <Xavier> 1
+<ReLU> <InputDim> 2048 <OutputDim> 2048 
+<AffineTransform> <InputDim> 2048 <OutputDim> 512 <Xavier> 1
+<BiCompactVfsmn> <InputDim> 512 <OutputDim> 512 <BackOrder> $backorder <AheadOrder> $aheadorder
+<AffineTransform> <InputDim> 512 <OutputDim> 2048 <Xavier> 1
+<ReLU> <InputDim> 2048 <OutputDim> 2048 
+<AffineTransform> <InputDim> 2048 <OutputDim> 512 <Xavier> 1
+<BiCompactVfsmn> <InputDim> 512 <OutputDim> 512 <BackOrder> $backorder <AheadOrder> $aheadorder
+<AffineTransform> <InputDim> 512 <OutputDim> 2048 <Xavier> 1
+<ReLU> <InputDim> 2048 <OutputDim> 2048 
 <AffineTransform> <InputDim> 2048 <OutputDim> 2048 <Xavier> 1
-<ReLU> <InputDim> 2048 <OutputDim> 2048
-<LinearTransform> <InputDim> 2048 <OutputDim> 512 <Xavier> 1
+<ReLU> <InputDim> 2048 <OutputDim> 2048 
+<AffineTransform> <InputDim> 2048 <OutputDim> 512 <Xavier> 1
 <AffineTransform> <InputDim> 512 <OutputDim> $num_tgt <Xavier> 1
 <Softmax> <InputDim> $num_tgt <OutputDim> $num_tgt
 </NnetProto>
@@ -101,35 +113,35 @@ if [ $stage -le 3 ]; then
 	aslp_scripts/aslp_nnet/train_scheduler.sh --train-tool "aslp-nnet-train-frame" \
         --learn-rate $lr \
         --momentum 0.9 \
-        --max-iters 1 \
+        --max-iters 20 \
         --minibatch_size 1024 \
 		--train-tool-opts "--gpu-id=$gpu_id --report-period=1000 --randomize=false" \
         $nnet_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir
-	cp $dir/final.nnet $single_init
-	rm $dir/final.nnet
+	# cp $dir/final.nnet $single_init
+	# rm $dir/final.nnet
 fi
 
 # Train nnet(dnn, cnn, lstm)
-if [ $stage -le 4 ]; then
-    echo "Training nnet"
-	single_final=$dir/nnet/train.single.nnet.final
-	parallel_init=$dir/nnet/train.parallel.nnet.init
-    cp $single_final $parallel_init
-	aslp_scripts/aslp_nnet/train_scheduler_4workers.sh --train-type "bmuf" \
-        --learn-rate 0.0000008 --momentum 0.9 \
-        --minibatch_size 1024 \
-		--gpu-num 4 --gpu-id $gpu_id \
-		--max-iters 40 \
-        --worker-tool-opts "--bmuf-learn-rate=1.0 --bmuf-momentum=0.75 --sync-period=$sync_period" \
-		--train-tool "aslp-nnet-train-frame" \
-		--worker-tool "aslp-nnet-train-frame-worker" \
-		--train-tool-opts "--report-period=1000 --randomize=false" \
-        $parallel_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir
-fi
+# if [ $stage -le 4 ]; then
+#     echo "Training nnet"
+# 	single_final=$dir/nnet/train.single.nnet.final
+# 	parallel_init=$dir/nnet/train.parallel.nnet.init
+#     cp $single_final $parallel_init
+# 	aslp_scripts/aslp_nnet/train_scheduler_4workers.sh --train-type "bmuf" \
+#         --learn-rate 0.00004 --momentum 0.9 \
+#         --minibatch_size 1024 \
+# 		--gpu-num 4 --gpu-id $gpu_id \
+# 		--max-iters 40 \
+#         --worker-tool-opts "--bmuf-learn-rate=1.0 --bmuf-momentum=0.75 --sync-period=$sync_period" \
+# 		--train-tool "aslp-nnet-train-frame" \
+# 		--worker-tool "aslp-nnet-train-frame-worker" \
+# 		--train-tool-opts "--report-period=1000 --randomize=false" \
+#         $parallel_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir
+# fi
 
 # Decoding 
 if [ $stage -le 5 ]; then
-    for x in test3000 test3000_noise; do
+    for x in test3000_fbank test3000_noise_fbank; do
 		aslp_scripts/aslp_nnet/decode.sh --nj 5 --num-threads 3 \
         	--cmd "$decode_cmd" --acwt 0.0666667 \
         	--nnet-forward-opts "--no-softmax=false --apply-log=true --skip-width=$skip_width" \
